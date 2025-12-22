@@ -1,0 +1,13 @@
+# Résultats des tests JMeter
+results/
+*.jtl
+*.csv
+*.log
+
+# Rapports HTML générés
+html-report*/
+
+# Fichiers temporaires JMeter
+*.tmp
+*.bak
+
