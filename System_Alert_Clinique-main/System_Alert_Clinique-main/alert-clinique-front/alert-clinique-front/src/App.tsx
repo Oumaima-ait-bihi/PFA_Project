@@ -21,13 +21,21 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Toaster } from './components/ui/sonner';
 
 function AppContent() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [userRole, setUserRole] = useState<'patient' | 'doctor' | 'admin'>('admin');
   const [activeView, setActiveView] = useState('dashboard');
   const [showSignup, setShowSignup] = useState(false);
   const { language } = useLanguage();
 
-
+  // Afficher la page de login si l'utilisateur n'est pas authentifié
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Login />
+        <Toaster position="top-right" />
+      </>
+    );
+  }
 
   // Admin interface
   if (user?.role === 'admin' || userRole === 'admin') {
@@ -66,15 +74,7 @@ function AppContent() {
                   </span>
                   <button
                     onClick={() => {
-                      if (user) {
-                        // logout logic
-                        // In a real app we would call logout() here, but for this demo structure
-                        // where we rely on isAuthenticated check at top, we need to ensure logout clears user.
-                        // The existing button didn't call logout function from context properly in the snippet ?? 
-                        // It just had a comment // logout logic.
-                        // I should probably fix this to allow returning to login screen.
-                        window.location.reload(); // Simple way to clear state if logout not implemented
-                      }
+                      logout();
                     }}
                     className="text-sm text-red-600 hover:text-red-700"
                   >

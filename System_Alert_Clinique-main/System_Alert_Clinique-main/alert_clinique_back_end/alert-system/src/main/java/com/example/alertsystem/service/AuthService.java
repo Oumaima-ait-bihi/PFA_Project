@@ -2,10 +2,9 @@ package com.example.alertsystem.service;
 
 import com.example.alertsystem.dto.AuthRequest;
 import com.example.alertsystem.dto.AuthResponse;
-import com.example.alertsystem.entities.Patient;
-import com.example.alertsystem.entities.Medecin;
 import com.example.alertsystem.repository.PatientRepository;
 import com.example.alertsystem.repository.MedecinRepository;
+import com.example.alertsystem.repository.AdminRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -13,11 +12,13 @@ import org.springframework.stereotype.Service;
 public class AuthService {
     private final PatientRepository patientRepository;
     private final MedecinRepository medecinRepository;
+    private final AdminRepository adminRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public AuthService(PatientRepository patientRepository, MedecinRepository medecinRepository) {
+    public AuthService(PatientRepository patientRepository, MedecinRepository medecinRepository, AdminRepository adminRepository) {
         this.patientRepository = patientRepository;
         this.medecinRepository = medecinRepository;
+        this.adminRepository = adminRepository;
     }
 
     /**
@@ -40,13 +41,40 @@ public class AuthService {
         String email = authRequest.getEmail().trim();
         String password = authRequest.getPassword();
 
-        if ("patient".equals(userType)) {
+        if ("admin".equals(userType)) {
+            return authenticateAdmin(email, password);
+        } else if ("patient".equals(userType)) {
             return authenticatePatient(email, password);
         } else if ("medecin".equals(userType)) {
             return authenticateMedecin(email, password);
         } else {
-            return new AuthResponse(false, "Invalid user type. Must be 'patient' or 'medecin'");
+            return new AuthResponse(false, "Invalid user type. Must be 'admin', 'patient' or 'medecin'");
         }
+    }
+
+    private AuthResponse authenticateAdmin(String email, String password) {
+        // Pour l'admin, on peut utiliser l'email ou le username
+        return adminRepository.findByUsername(email)
+                .or(() -> adminRepository.findAll().stream()
+                        .filter(admin -> email.equals(admin.getUsername()))
+                        .findFirst())
+                .map(admin -> {
+                    // Vérifier le mot de passe
+                    if (admin.getPassword() != null && passwordEncoder.matches(password, admin.getPassword())) {
+                        return new AuthResponse(
+                                true,
+                                "Authentication successful",
+                                "admin",
+                                admin.getId(),
+                                admin.getUsername() != null ? admin.getUsername() : "Administrateur",
+                                email, // Utiliser l'email fourni
+                                null
+                        );
+                    } else {
+                        return new AuthResponse(false, "Invalid email or password");
+                    }
+                })
+                .orElse(new AuthResponse(false, "Admin not found with username: " + email));
     }
 
     private AuthResponse authenticatePatient(String email, String password) {

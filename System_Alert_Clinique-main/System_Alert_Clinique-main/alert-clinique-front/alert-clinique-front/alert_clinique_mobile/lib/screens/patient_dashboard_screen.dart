@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/language_provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
@@ -236,17 +238,13 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           _buildPhotoCaptureCard(context, t),
           const SizedBox(height: 16),
 
-          // Suggestions IA (caché par défaut, peut être affiché si nécessaire)
-          if (_currentPrediction != null && _currentPrediction!.alertFlag) ...[
-            _buildSuggestionsCard(context, t),
-            const SizedBox(height: 16),
-          ],
+          // Suggestions IA - Toujours affichées
+          _buildSuggestionsCard(context, t),
+          const SizedBox(height: 16),
 
-          // Graphiques de tendances (caché par défaut, peut être affiché si nécessaire)
-          if (_predictionHistory.isNotEmpty && _predictionHistory.length >= 3) ...[
-            _buildTrendsChart(context, t),
-            const SizedBox(height: 16),
-          ],
+          // Graphiques de tendances - Toujours affichés
+          _buildTrendsChart(context, t),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -256,37 +254,53 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     Color riskColor;
     String riskText;
     IconData riskIcon;
+    Color backgroundColor;
+    Color textColor;
 
     if (!_aiServiceAvailable) {
       riskColor = Colors.grey;
       riskText = 'Service IA indisponible';
       riskIcon = Icons.error_outline;
+      backgroundColor = Colors.grey.shade50;
+      textColor = Colors.grey.shade700;
     } else if (_isPredicting) {
       riskColor = Colors.blue;
       riskText = 'Analyse en cours...';
       riskIcon = Icons.hourglass_empty;
+      backgroundColor = Colors.blue.shade50;
+      textColor = Colors.blue.shade700;
     } else if (_currentPrediction == null) {
       riskColor = Colors.blue;
       riskText = 'En attente de données';
       riskIcon = Icons.psychology;
+      backgroundColor = Colors.blue.shade50;
+      textColor = Colors.blue.shade700;
     } else {
       final score = _currentPrediction!.anomalyScore;
       if (score < 0.3) {
         riskColor = Colors.green;
         riskText = 'Risque faible';
         riskIcon = Icons.check_circle;
+        backgroundColor = Colors.green.shade50;
+        textColor = Colors.green.shade700;
       } else if (score < 0.6) {
         riskColor = Colors.orange;
         riskText = 'Risque modéré';
         riskIcon = Icons.warning;
+        backgroundColor = Colors.orange.shade50;
+        textColor = Colors.orange.shade700;
       } else if (score < 0.8) {
         riskColor = Colors.deepOrange;
         riskText = 'Risque élevé';
         riskIcon = Icons.warning_amber;
+        backgroundColor = Colors.deepOrange.shade50;
+        textColor = Colors.deepOrange.shade700;
       } else {
         riskColor = Colors.red;
         riskText = 'Risque critique';
         riskIcon = Icons.error;
+        backgroundColor = Colors.red.shade50;
+        textColor = Colors.red.shade700;
       }
     }
 
@@ -298,119 +312,126 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: riskColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(riskIcon, color: riskColor, size: 24),
                   ),
-                  child: Icon(Icons.psychology, color: Colors.blue.shade600, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Analyse IA en temps réel',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(riskIcon, color: riskColor, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            riskText,
-                            style: TextStyle(
-                              color: riskColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Analyse IA en temps réel',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
-                        ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(riskIcon, color: riskColor, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              riskText,
+                              style: TextStyle(
+                                color: riskColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (_currentPrediction != null) ...[
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Score d\'anomalie',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      '${(score * 100).toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: riskColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: score,
+                    minHeight: 10,
+                    backgroundColor: riskColor.withOpacity(0.2),
+                    valueColor: AlwaysStoppedAnimation<Color>(riskColor),
+                  ),
+                ),
+              ],
+              if (hasAlert) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.red.shade200,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: Colors.red.shade700, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Alerte détectée ! Consultez votre médecin.',
+                          style: TextStyle(
+                            color: Colors.red.shade900,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
-            ),
-            if (_currentPrediction != null) ...[
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Score d\'anomalie',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  Text(
-                    '${(score * 100).toStringAsFixed(1)}%',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: riskColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: score,
-                  minHeight: 8,
-                  backgroundColor: Colors.grey.shade200,
-                  valueColor: AlwaysStoppedAnimation<Color>(riskColor),
-                ),
-              ),
             ],
-            if (hasAlert) ...[
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.pink.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.pink.shade200,
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber, color: Colors.pink.shade700, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Alerte détectée ! Consultez votre médecin.',
-                        style: TextStyle(
-                          color: Colors.pink.shade900,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -715,7 +736,74 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   }
 
   Widget _buildSuggestionsCard(BuildContext context, String Function(String) t) {
-    final suggestions = _currentPrediction?.suggestions ?? {};
+    // Générer des suggestions basées sur les données actuelles et la prédiction IA
+    List<Map<String, dynamic>> suggestions = [];
+    
+    if (_currentPrediction != null) {
+      final score = _currentPrediction!.anomalyScore;
+      
+      // Suggestion basée sur le score d'anomalie
+      if (score >= 0.8) {
+        suggestions.add({
+          'icon': Icons.warning_amber,
+          'color': Colors.orange,
+          'text': 'Risque élevé détecté. Consultez votre médecin.',
+        });
+      } else if (score >= 0.6) {
+        suggestions.add({
+          'icon': Icons.warning,
+          'color': Colors.orange.shade300,
+          'text': 'Risque modéré détecté. Surveillez vos signes vitaux.',
+        });
+      }
+      
+      // Suggestion basée sur le rythme cardiaque
+      if (_heartRate > 100) {
+        suggestions.add({
+          'icon': Icons.favorite,
+          'color': Colors.red,
+          'text': 'Votre rythme cardiaque est élevé. Reposez-vous.',
+        });
+      } else if (_heartRate < 60) {
+        suggestions.add({
+          'icon': Icons.favorite,
+          'color': Colors.blue,
+          'text': 'Votre rythme cardiaque est bas. Consultez votre médecin si cela persiste.',
+        });
+      }
+      
+      // Suggestion basée sur le sommeil
+      if (_sleepHours < 6) {
+        suggestions.add({
+          'icon': Icons.bedtime,
+          'color': Colors.purple,
+          'text': 'Vous devriez dormir au moins 7-8 heures par nuit.',
+        });
+      }
+      
+      // Suggestion basée sur l'humeur
+      if (_moodScore < 3) {
+        suggestions.add({
+          'icon': Icons.sentiment_very_dissatisfied,
+          'color': Colors.amber,
+          'text': 'Votre humeur semble faible. Prenez soin de vous.',
+        });
+      }
+      
+      // Suggestion générale sur les médicaments
+      suggestions.add({
+        'icon': Icons.medication,
+        'color': Colors.blue,
+        'text': 'Vérifiez que vous avez pris vos médicaments.',
+      });
+    } else {
+      // Suggestions par défaut si pas de prédiction
+      suggestions.add({
+        'icon': Icons.info,
+        'color': Colors.blue,
+        'text': 'Remplissez vos données vitales pour recevoir des suggestions personnalisées.',
+      });
+    }
     
     return Card(
       elevation: 2,
@@ -732,45 +820,40 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 Icon(Icons.lightbulb, color: Colors.blue.shade600),
                 const SizedBox(width: 8),
                 Text(
-                  'Suggestions basées sur l\'IA',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  'Suggestions IA',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            if (suggestions.isEmpty)
-              Text(
-                _currentPrediction?.message ?? 'Aucune suggestion disponible',
-                style: TextStyle(color: Colors.grey.shade700),
-              )
-            else
-              ...suggestions.entries.map((entry) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        margin: const EdgeInsets.only(top: 6, right: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade600,
-                          shape: BoxShape.circle,
+            ...suggestions.map((suggestion) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      suggestion['icon'] as IconData,
+                      color: suggestion['color'] as Color,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        suggestion['text'] as String,
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 14,
                         ),
                       ),
-                      Expanded(
-                        child: Text(
-                          '${entry.key}: ${entry.value}',
-                          style: TextStyle(color: Colors.grey.shade700),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ],
         ),
       ),
@@ -778,7 +861,88 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   }
 
   Widget _buildTrendsChart(BuildContext context, String Function(String) t) {
-    if (_predictionHistory.isEmpty) return const SizedBox.shrink();
+    // Préparer les données pour le graphique
+    List<FlSpot> spots = [];
+    List<FlSpot> alertSpots = [];
+    
+    // Si on a une prédiction actuelle, l'ajouter à l'historique pour l'affichage
+    if (_currentPrediction != null) {
+      final currentData = {
+        'anomalyScore': _currentPrediction!.anomalyScore,
+        'alertFlag': _currentPrediction!.alertFlag,
+        'timestamp': DateTime.now(),
+      };
+      
+      // Ajouter à l'historique si pas déjà présent
+      if (_predictionHistory.isEmpty || 
+          _predictionHistory.last['timestamp'] != currentData['timestamp']) {
+        _predictionHistory.add(currentData);
+        // Garder seulement les 7 derniers points
+        if (_predictionHistory.length > 7) {
+          _predictionHistory.removeAt(0);
+        }
+      }
+    }
+    
+    // Créer les points pour le graphique
+    for (int i = 0; i < _predictionHistory.length; i++) {
+      final data = _predictionHistory[i];
+      final score = data['anomalyScore'] as double;
+      spots.add(FlSpot(i.toDouble(), score));
+      
+      // Marquer les alertes
+      if (data['alertFlag'] == true) {
+        alertSpots.add(FlSpot(i.toDouble(), score));
+      }
+    }
+    
+    // Si pas de données, créer des données de démonstration
+    if (spots.isEmpty && _currentPrediction != null) {
+      spots.add(FlSpot(0.0, _currentPrediction!.anomalyScore));
+    } else if (spots.isEmpty) {
+      // Afficher un message si pas de données
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.trending_up, color: Colors.blue.shade600),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Tendances des prédictions',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Text(
+                    'Aucune donnée disponible.\nRemplissez vos données vitales pour voir les tendances.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Card(
       elevation: 2,
@@ -808,10 +972,33 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               height: 200,
               child: LineChart(
                 LineChartData(
-                  gridData: FlGridData(show: true),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 0.2,
+                    getDrawingHorizontalLine: (value) {
+                      return FlLine(
+                        color: Colors.grey.shade200,
+                        strokeWidth: 1,
+                      );
+                    },
+                  ),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: true),
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                        getTitlesWidget: (value, meta) {
+                          return Text(
+                            '${(value * 100).toInt()}%',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 10,
+                            ),
+                          );
+                        },
+                        interval: 0.2,
+                      ),
                     ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
@@ -823,24 +1010,30 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       sideTitles: SideTitles(showTitles: false),
                     ),
                   ),
-                  borderData: FlBorderData(show: true),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade300),
+                      left: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
                   lineBarsData: [
                     LineChartBarData(
-                      spots: _predictionHistory.asMap().entries.map((e) {
-                        return FlSpot(
-                          e.key.toDouble(),
-                          e.value['anomalyScore'] as double,
-                        );
-                      }).toList(),
+                      spots: spots,
                       isCurved: true,
                       color: Colors.blue.shade600,
                       barWidth: 3,
                       dotData: FlDotData(
                         show: true,
                         getDotPainter: (spot, percent, barData, index) {
+                          // Vérifier si c'est une alerte
+                          final isAlert = alertSpots.any((alertSpot) =>
+                              (alertSpot.x - spot.x).abs() < 0.1 &&
+                              (alertSpot.y - spot.y).abs() < 0.1);
+                          
                           return FlDotCirclePainter(
-                            radius: 4,
-                            color: Colors.blue.shade600,
+                            radius: isAlert ? 6 : 4,
+                            color: isAlert ? Colors.red : Colors.blue.shade600,
                             strokeWidth: 2,
                             strokeColor: Colors.white,
                           );
@@ -854,8 +1047,73 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                   ],
                   minY: 0,
                   maxY: 1,
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      tooltipBgColor: Colors.blue.shade700,
+                      getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                        return touchedSpots.map((LineBarSpot touchedSpot) {
+                          return LineTooltipItem(
+                            '${(touchedSpot.y * 100).toStringAsFixed(1)}%',
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
                 ),
               ),
+            ),
+            const SizedBox(height: 8),
+            // Légende
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade600,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Score d\'anomalie',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Alerte détectée',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),

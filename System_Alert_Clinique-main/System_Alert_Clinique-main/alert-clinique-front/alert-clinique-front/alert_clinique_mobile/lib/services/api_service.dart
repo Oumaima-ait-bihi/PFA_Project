@@ -289,10 +289,24 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return AIPrediction.fromJson(data);
+        
+        // Le backend retourne {success: true, prediction: {...}, error: null}
+        // Il faut extraire les données de 'prediction'
+        if (data['prediction'] != null) {
+          final predictionData = data['prediction'];
+          return AIPrediction.fromJson({
+            'anomaly_score': predictionData['anomaly_score'],
+            'alert_flag': predictionData['alert_flag'],
+            'threshold_used': predictionData['threshold_used'],
+            'confidence': predictionData['confidence'],
+          });
+        } else {
+          // Fallback: essayer de parser directement
+          return AIPrediction.fromJson(data);
+        }
       } else {
         final errorBody = json.decode(response.body);
-        throw Exception(errorBody['message'] ?? 'Erreur lors de la prédiction IA');
+        throw Exception(errorBody['error'] ?? errorBody['message'] ?? 'Erreur lors de la prédiction IA');
       }
     } catch (e) {
       throw Exception('Erreur de connexion au service IA: $e');

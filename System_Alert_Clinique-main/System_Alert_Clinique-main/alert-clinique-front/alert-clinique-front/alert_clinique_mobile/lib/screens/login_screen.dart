@@ -58,15 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.blue.shade50,
-              Colors.white,
-              Colors.purple.shade50,
-            ],
-          ),
+          color: Colors.blue.shade600, // Fond bleu uni comme sur la photo
         ),
         child: SafeArea(
           child: Center(
@@ -96,116 +88,42 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
                   
-                  // Logo with ECG and Stethoscope
+                  // Logo avec icône heartbeat verte
                   Container(
-                    width: 100,
-                    height: 100,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // ECG Line
-                        CustomPaint(
-                          size: Size(100, 50),
-                          painter: ECGPainter(),
-                        ),
-                        // Stethoscope
-                        Positioned(
-                          bottom: 10,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade600,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.green.shade800, width: 2),
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 20,
-                                height: 20,
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade800,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    width: 80,
+                    height: 50,
+                    child: CustomPaint(
+                      size: Size(80, 50),
+                      painter: ECGPainter(),
                     ),
                   ),
                   const SizedBox(height: 16),
+                  
+                  // Tagline
+                  Text(
+                    '—Your Partner in Health—',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.9),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   
                   // Title
                   Text(
                     'MediCure Clinic',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Colors.green.shade600,
+                      color: Colors.white,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '—Your Partner in Health—',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.blue.shade800,
-                    ),
-
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Connexion',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Connectez-vous pour accéder à votre espace',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
                   ),
                   const SizedBox(height: 32),
                   
-                  // Role selector
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildRoleButton(
-                            UserRole.patient,
-                            '👤 Patient',
-                            _selectedRole == UserRole.patient,
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildRoleButton(
-                            UserRole.doctor,
-                            '⚕️ Médecin',
-                            _selectedRole == UserRole.doctor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Login form
+                  // Login form - Carte blanche
                   Card(
-                    elevation: 4,
+                    elevation: 8,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -216,6 +134,52 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            // Titre dans la carte
+                            Text(
+                              'Connexion',
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade800,
+                                  ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Connectez-vous pour accéder à votre espace',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.grey.shade600,
+                                  ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            
+                            // Role selector
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildRoleButton(
+                                      UserRole.patient,
+                                      '👤 Patient',
+                                      _selectedRole == UserRole.patient,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _buildRoleButton(
+                                      UserRole.doctor,
+                                      '⚕️ Médecin',
+                                      _selectedRole == UserRole.doctor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            
                             TextFormField(
                               key: const Key('emailField'),
                               controller: _emailController,
@@ -231,6 +195,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
+                                filled: true,
+                                fillColor: Colors.blue.shade50,
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
@@ -251,9 +217,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                 labelText: t('common.password'),
                                 hintText: '••••••••',
                                 prefixIcon: const Icon(Icons.lock),
+                                suffixIcon: IconButton(
+                                  icon: const Icon(Icons.visibility),
+                                  onPressed: () {
+                                    // Toggle password visibility
+                                  },
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
+                                filled: true,
+                                fillColor: Colors.blue.shade50,
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
@@ -274,6 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 backgroundColor: Colors.blue.shade600,
+                                elevation: 2,
                               ),
                               child: authProvider.isLoading
                                   ? const SizedBox(
@@ -286,12 +261,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                       ),
                                     )
-                                  : Text(
-                                      t('common.login'),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  : Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          t('common.login'),
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Icon(Icons.arrow_forward, size: 20),
+                                      ],
                                     ),
                             ),
                           ],

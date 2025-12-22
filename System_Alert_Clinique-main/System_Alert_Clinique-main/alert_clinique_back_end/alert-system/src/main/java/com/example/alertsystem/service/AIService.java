@@ -12,6 +12,8 @@ import org.springframework.web.client.RestClientException;
 
 import java.time.LocalDate;
 import java.time.DayOfWeek;
+import java.util.Map;
+import java.util.Map;
 
 @Service
 public class AIService {
@@ -53,19 +55,83 @@ public class AIService {
             
             HttpEntity<AIPredictionRequest> entity = new HttpEntity<>(request, headers);
             
-            ResponseEntity<AIPredictionResponse> response = restTemplate.exchange(
+            // Récupérer la réponse comme String pour pouvoir la parser manuellement
+            ResponseEntity<String> stringResponse = restTemplate.exchange(
                 url,
                 HttpMethod.POST,
                 entity,
-                AIPredictionResponse.class
+                String.class
             );
             
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return response.getBody();
+            if (stringResponse.getStatusCode().is2xxSuccessful() && stringResponse.getBody() != null) {
+                // Parser la réponse JSON manuellement
+                @SuppressWarnings("unchecked")
+                Map<String, Object> responseMap = (Map<String, Object>) objectMapper.readValue(
+                    stringResponse.getBody(), 
+                    Map.class
+                );
+                
+                AIPredictionResponse response = new AIPredictionResponse();
+                
+                // Vérifier si c'est une réponse d'erreur
+                if (responseMap.containsKey("error")) {
+                    response.setSuccess(false);
+                    response.setError((String) responseMap.get("error"));
+                    return response;
+                }
+                
+                // Extraire les données de prédiction
+                if (responseMap.containsKey("prediction")) {
+                    Map<String, Object> predictionMap = (Map<String, Object>) responseMap.get("prediction");
+                    AIPredictionResponse.PredictionData predictionData = new AIPredictionResponse.PredictionData();
+                    
+                    if (predictionMap.containsKey("alert_flag")) {
+                        predictionData.setAlert_flag((Boolean) predictionMap.get("alert_flag"));
+                    }
+                    if (predictionMap.containsKey("anomaly_score")) {
+                        Object scoreObj = predictionMap.get("anomaly_score");
+                        if (scoreObj instanceof Number) {
+                            predictionData.setAnomaly_score(((Number) scoreObj).doubleValue());
+                        }
+                    }
+                    if (predictionMap.containsKey("threshold_used")) {
+                        Object thresholdObj = predictionMap.get("threshold_used");
+                        if (thresholdObj instanceof Number) {
+                            predictionData.setThreshold_used(((Number) thresholdObj).doubleValue());
+                        }
+                    }
+                    if (predictionMap.containsKey("confidence")) {
+                        Object confidenceObj = predictionMap.get("confidence");
+                        if (confidenceObj instanceof Number) {
+                            predictionData.setConfidence(((Number) confidenceObj).doubleValue());
+                        }
+                    }
+                    
+                    response.setSuccess(true);
+                    response.setPrediction(predictionData);
+                } else {
+                    // Format alternatif: données directement dans la réponse
+                    AIPredictionResponse.PredictionData predictionData = new AIPredictionResponse.PredictionData();
+                    
+                    if (responseMap.containsKey("alert_flag")) {
+                        predictionData.setAlert_flag((Boolean) responseMap.get("alert_flag"));
+                    }
+                    if (responseMap.containsKey("anomaly_score")) {
+                        Object scoreObj = responseMap.get("anomaly_score");
+                        if (scoreObj instanceof Number) {
+                            predictionData.setAnomaly_score(((Number) scoreObj).doubleValue());
+                        }
+                    }
+                    
+                    response.setSuccess(true);
+                    response.setPrediction(predictionData);
+                }
+                
+                return response;
             } else {
                 AIPredictionResponse errorResponse = new AIPredictionResponse();
                 errorResponse.setSuccess(false);
-                errorResponse.setError("Erreur lors de la prédiction: Status " + response.getStatusCode());
+                errorResponse.setError("Erreur lors de la prédiction: Status " + stringResponse.getStatusCode());
                 return errorResponse;
             }
         } catch (org.springframework.web.client.HttpClientErrorException e) {
