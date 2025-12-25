@@ -16,7 +16,9 @@ public class AlerteService {
         this.alerteRepository = alerteRepository;
     }
 
-    public List<Alerte> getAllAlertes() { return alerteRepository.findAll(); }
+    public List<Alerte> getAllAlertes() { 
+        return alerteRepository.findAllWithPatient(); 
+    }
     public Optional<Alerte> getAlerteById(Long id) { return alerteRepository.findById(id); }
     public Alerte saveAlerte(Alerte alerte) { return alerteRepository.save(alerte); }
     public void deleteAlerte(Long id) { alerteRepository.deleteById(id); }

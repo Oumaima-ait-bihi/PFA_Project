@@ -5,6 +5,7 @@ import com.example.alertsystem.dto.AuthResponse;
 import com.example.alertsystem.repository.PatientRepository;
 import com.example.alertsystem.repository.MedecinRepository;
 import com.example.alertsystem.repository.AdminRepository;
+import com.example.alertsystem.repository.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -13,12 +14,14 @@ public class AuthService {
     private final PatientRepository patientRepository;
     private final MedecinRepository medecinRepository;
     private final AdminRepository adminRepository;
+    private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public AuthService(PatientRepository patientRepository, MedecinRepository medecinRepository, AdminRepository adminRepository) {
+    public AuthService(PatientRepository patientRepository, MedecinRepository medecinRepository, AdminRepository adminRepository, UserRepository userRepository) {
         this.patientRepository = patientRepository;
         this.medecinRepository = medecinRepository;
         this.adminRepository = adminRepository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -78,44 +81,128 @@ public class AuthService {
     }
 
     private AuthResponse authenticatePatient(String email, String password) {
-        return patientRepository.findByEmail(email)
-                .map(patient -> {
-                    // Verify password
-                    if (patient.getPassword() != null && passwordEncoder.matches(password, patient.getPassword())) {
-                        return new AuthResponse(
-                                true,
-                                "Authentication successful",
-                                "patient",
-                                patient.getId(),
-                                patient.getName(),
-                                patient.getEmail(),
-                                patient.getPhone()
-                        );
+        // D'abord, chercher dans la table users (username = email)
+        return userRepository.findByUsername(email)
+                .filter(user -> "Patient".equals(user.getRole()))
+                .map(user -> {
+                    // Vérifier le mot de passe depuis users
+                    if (user.getPassword() != null && passwordEncoder.matches(password, user.getPassword())) {
+                        // Essayer de récupérer les infos complètes depuis la table patient
+                        return patientRepository.findByEmail(email)
+                                .map(patient -> {
+                                    // Utiliser les infos complètes du patient
+                                    return new AuthResponse(
+                                            true,
+                                            "Authentication successful",
+                                            "patient",
+                                            patient.getId(),
+                                            patient.getName(),
+                                            patient.getEmail(),
+                                            patient.getPhone()
+                                    );
+                                })
+                                .orElseGet(() -> {
+                                    // Si pas dans patient, utiliser les infos de base depuis users
+                                    // Extraire le nom depuis le username (email) si possible
+                                    String userName = email.split("@")[0];
+                                    // Capitaliser la première lettre
+                                    userName = userName.substring(0, 1).toUpperCase() + userName.substring(1);
+                                    
+                                    return new AuthResponse(
+                                            true,
+                                            "Authentication successful",
+                                            "patient",
+                                            user.getId(),
+                                            userName, // Utiliser le username comme nom
+                                            email,
+                                            null // Pas de téléphone dans users
+                                    );
+                                });
                     } else {
                         return new AuthResponse(false, "Invalid email or password");
                     }
                 })
-                .orElse(new AuthResponse(false, "Patient not found with email: " + email));
+                .orElseGet(() -> {
+                    // Si pas trouvé dans users, chercher directement dans patient (pour compatibilité)
+                    return patientRepository.findByEmail(email)
+                            .map(patient -> {
+                                if (patient.getPassword() != null && passwordEncoder.matches(password, patient.getPassword())) {
+                                    return new AuthResponse(
+                                            true,
+                                            "Authentication successful",
+                                            "patient",
+                                            patient.getId(),
+                                            patient.getName(),
+                                            patient.getEmail(),
+                                            patient.getPhone()
+                                    );
+                                } else {
+                                    return new AuthResponse(false, "Invalid email or password");
+                                }
+                            })
+                            .orElse(new AuthResponse(false, "Patient not found with email: " + email));
+                });
     }
 
     private AuthResponse authenticateMedecin(String email, String password) {
-        return medecinRepository.findByEmail(email)
-                .map(medecin -> {
-                    // Verify password
-                    if (medecin.getPassword() != null && passwordEncoder.matches(password, medecin.getPassword())) {
-                        return new AuthResponse(
-                                true,
-                                "Authentication successful",
-                                "medecin",
-                                medecin.getId(),
-                                medecin.getNom(),
-                                medecin.getEmail(),
-                                medecin.getPhone()
-                        );
+        // D'abord, chercher dans la table users (username = email)
+        return userRepository.findByUsername(email)
+                .filter(user -> "Medecin".equals(user.getRole()))
+                .map(user -> {
+                    // Vérifier le mot de passe depuis users
+                    if (user.getPassword() != null && passwordEncoder.matches(password, user.getPassword())) {
+                        // Essayer de récupérer les infos complètes depuis la table medecin
+                        return medecinRepository.findByEmail(email)
+                                .map(medecin -> {
+                                    // Utiliser les infos complètes du médecin
+                                    return new AuthResponse(
+                                            true,
+                                            "Authentication successful",
+                                            "medecin",
+                                            medecin.getId(),
+                                            medecin.getNom(),
+                                            medecin.getEmail(),
+                                            medecin.getPhone()
+                                    );
+                                })
+                                .orElseGet(() -> {
+                                    // Si pas dans medecin, utiliser les infos de base depuis users
+                                    String userName = email.split("@")[0];
+                                    userName = userName.substring(0, 1).toUpperCase() + userName.substring(1);
+                                    
+                                    return new AuthResponse(
+                                            true,
+                                            "Authentication successful",
+                                            "medecin",
+                                            user.getId(),
+                                            "Dr. " + userName, // Ajouter "Dr." pour les médecins
+                                            email,
+                                            null
+                                    );
+                                });
                     } else {
                         return new AuthResponse(false, "Invalid email or password");
                     }
                 })
-                .orElse(new AuthResponse(false, "Medecin not found with email: " + email));
+                .orElseGet(() -> {
+                    // Si pas trouvé dans users, chercher directement dans medecin (pour compatibilité)
+                    return medecinRepository.findByEmail(email)
+                            .map(medecin -> {
+                                if (medecin.getPassword() != null && passwordEncoder.matches(password, medecin.getPassword())) {
+                                    return new AuthResponse(
+                                            true,
+                                            "Authentication successful",
+                                            "medecin",
+                                            medecin.getId(),
+                                            medecin.getNom(),
+                                            medecin.getEmail(),
+                                            medecin.getPhone()
+                                    );
+                                } else {
+                                    return new AuthResponse(false, "Invalid email or password");
+                                }
+                            })
+                            .orElse(new AuthResponse(false, "Medecin not found with email: " + email));
+                });
     }
 }

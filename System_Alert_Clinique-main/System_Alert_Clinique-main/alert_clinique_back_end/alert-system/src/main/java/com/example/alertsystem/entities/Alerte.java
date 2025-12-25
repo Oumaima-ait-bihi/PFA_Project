@@ -14,7 +14,7 @@ public class Alerte {
     private String message;
     private OffsetDateTime timestamp = OffsetDateTime.now();
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "patient_id")
     private Patient patient;
 

@@ -98,20 +98,23 @@ class Alert {
     }
 
     // Extraction du nom du patient
-    String patientName = 'Patient inconnu';
-    if (json['patient'] != null) {
+    // Priorité 1: Utiliser patientName du DTO (garanti par le backend)
+    String patientName = json['patientName']?.toString() ?? '';
+    
+    // Priorité 2: Utiliser patient.name si patient est un objet
+    if (patientName.isEmpty && json['patient'] != null) {
       if (json['patient'] is Map) {
         patientName = json['patient']['name'] ?? 
                      json['patient']['nom'] ?? 
                      json['patient']['patientName'] ??
-                     'Patient inconnu';
+                     '';
       } else if (json['patient'] is String) {
         patientName = json['patient'];
       }
     }
-
-    // Extraction depuis le message si nécessaire
-    if (patientName == 'Patient inconnu' && json['message'] != null) {
+    
+    // Priorité 3: Extraction depuis le message si nécessaire
+    if (patientName.isEmpty && json['message'] != null) {
       final message = json['message'].toString();
       // Pattern: "Patient: Nom. ..." ou "Patient Nom ..."
       final patterns = [
@@ -128,10 +131,14 @@ class Alert {
         }
       }
     }
-
-    // Fallback avec patientId si toujours inconnu
-    if (patientName == 'Patient inconnu' && patientId.isNotEmpty) {
-      patientName = 'Patient $patientId';
+    
+    // Fallback final: utiliser patientId si toujours vide
+    if (patientName.isEmpty) {
+      if (patientId.isNotEmpty) {
+        patientName = 'Patient $patientId';
+      } else {
+        patientName = 'Patient inconnu';
+      }
     }
 
     // Conversion de la sévérité

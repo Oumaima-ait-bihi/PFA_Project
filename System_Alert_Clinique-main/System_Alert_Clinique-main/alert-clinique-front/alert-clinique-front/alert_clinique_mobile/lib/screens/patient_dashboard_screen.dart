@@ -39,6 +39,10 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   int _patientId = 1; // Par défaut, sera récupéré depuis l'auth
   String _patientName = 'Patient';
 
+  // Image capturée
+  File? _capturedImage;
+  final ImagePicker _imagePicker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
@@ -1121,37 +1125,197 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
+  Future<void> _capturePhoto() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 90,
+        preferredCameraDevice: CameraDevice.front, // Caméra frontale pour le visage
+      );
+
+      if (image != null) {
+        setState(() {
+          _capturedImage = File(image.path);
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Photo de votre visage capturée avec succès !'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+
+        // Ici, vous pouvez ajouter la logique pour envoyer la photo au backend
+        // await ApiService.uploadPatientPhoto(_patientId, _capturedImage!);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la capture: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildPhotoCaptureCard(BuildContext context, String Function(String) t) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Zone d'affichage de la photo ou bouton de capture
+          InkWell(
+            onTap: _capturePhoto,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Container(
+              width: double.infinity,
+              height: _capturedImage != null ? 250 : 180,
               decoration: BoxDecoration(
                 color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
               ),
-              child: Icon(Icons.camera_alt, color: Colors.blue.shade600, size: 24),
+              child: _capturedImage != null
+                  ? Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                          child: Image.file(
+                            _capturedImage!,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        // Overlay avec bouton pour reprendre
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.3),
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.9),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.camera_alt,
+                                      color: Colors.blue.shade600,
+                                      size: 32,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Appuyez pour reprendre',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.camera_alt,
+                            color: Colors.blue.shade600,
+                            size: 40,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Prendre une photo de votre visage',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Appuyez pour ouvrir la caméra',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Capture Photo',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+          ),
+          // Section info et actions
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.face,
+                  color: Colors.blue.shade600,
+                  size: 20,
                 ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _capturedImage != null
+                        ? 'Photo de votre visage capturée'
+                        : 'Capturez une photo de votre visage pour votre profil',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+                if (_capturedImage != null) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(Icons.delete, color: Colors.red.shade600),
+                    onPressed: () {
+                      setState(() {
+                        _capturedImage = null;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Photo supprimée'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                    tooltip: 'Supprimer la photo',
+                  ),
+                ],
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

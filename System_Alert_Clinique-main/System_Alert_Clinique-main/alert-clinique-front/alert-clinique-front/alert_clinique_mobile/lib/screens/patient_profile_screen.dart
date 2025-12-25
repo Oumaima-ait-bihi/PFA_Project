@@ -21,9 +21,10 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     super.initState();
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.user;
+    // Utiliser le nom réel de l'utilisateur authentifié depuis l'API
     _profileData = {
-      'name': user?.name ?? 'Jean Dupont',
-      'email': user?.email ?? 'jean.dupont@email.com',
+      'name': user?.name ?? 'Patient',
+      'email': user?.email ?? '',
       'phone': '+33 6 12 34 56 78',
       'dateOfBirth': '15/05/1978',
       'address': '123 Rue de la Santé, 75013 Paris',

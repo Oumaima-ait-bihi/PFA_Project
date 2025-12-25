@@ -103,7 +103,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             PopupMenuButton(
               icon: CircleAvatar(
-                child: Text(user.name[0].toUpperCase()),
+                child: Text(
+                  user.name.split(' ').map((n) => n.isNotEmpty ? n[0].toUpperCase() : '').take(2).join(''),
+                  style: const TextStyle(fontSize: 14),
+                ),
               ),
               itemBuilder: (context) => [
                 PopupMenuItem(
@@ -156,20 +159,41 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: const Icon(Icons.notifications_outlined),
               onPressed: () {},
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: CircleAvatar(
+            PopupMenuButton(
+              icon: CircleAvatar(
                 radius: 16,
                 backgroundColor: Colors.blue.shade100,
                 child: Text(
-                  user.name[0].toUpperCase(),
+                  user.name.split(' ').map((n) => n.isNotEmpty ? n[0].toUpperCase() : '').take(2).join(''),
                   style: TextStyle(
                     color: Colors.blue.shade700,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
               ),
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  child: Text(user.name),
+                  enabled: false,
+                ),
+                const PopupMenuItem(
+                  child: Divider(),
+                ),
+                PopupMenuItem(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.logout),
+                      const SizedBox(width: 8),
+                      Text(t('header.logout')),
+                    ],
+                  ),
+                  onTap: () {
+                    authProvider.logout();
+                    Navigator.of(context).pushReplacementNamed('/login');
+                  },
+                ),
+              ],
             ),
           ],
         ),
@@ -186,7 +210,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     CircleAvatar(
                       radius: 30,
-                      child: Text(user.name[0].toUpperCase()),
+                      backgroundColor: Colors.white,
+                      child: Text(
+                        user.name.split(' ').map((n) => n.isNotEmpty ? n[0].toUpperCase() : '').take(2).join(''),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(

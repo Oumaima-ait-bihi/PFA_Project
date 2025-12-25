@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8080/api";
+const API_BASE_URL = "http://localhost:8082/api";
 
 // ============================================
 // Types alignés avec les entités backend
@@ -36,7 +36,13 @@ export interface AlerteDto {
   message: string;
   timestamp: string;
   patientId?: number;
+  patientName?: string;
   medecinId?: number;
+  patient?: {
+    id: number;
+    name: string;
+    email?: string;
+  };
 }
 
 // ============================================
@@ -194,7 +200,25 @@ export async function getAlertes(): Promise<AlerteDto[]> {
   if (!res.ok) {
     throw new Error("Erreur lors du chargement des alertes");
   }
-  return res.json();
+  const alertes = await res.json();
+  
+  // Le backend retourne maintenant patientName directement dans le DTO
+  return alertes.map((alerte: any) => {
+    // Utiliser patientName du DTO si disponible, sinon essayer patient.name
+    const patientName = alerte.patientName || 
+                       alerte.patient?.name || 
+                       (alerte.patientId ? `Patient ${alerte.patientId}` : 'Patient inconnu');
+    
+    return {
+      ...alerte,
+      patient: alerte.patient || (alerte.patientId ? {
+        id: alerte.patientId,
+        name: patientName
+      } : undefined),
+      patientId: alerte.patientId,
+      patientName: patientName
+    };
+  });
 }
 
 export async function getAlerteById(id: number): Promise<AlerteDto> {

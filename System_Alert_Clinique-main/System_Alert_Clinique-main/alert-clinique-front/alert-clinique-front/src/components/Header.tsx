@@ -1,6 +1,7 @@
 import { Bell, User, LogOut, Languages } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Avatar, AvatarFallback } from './ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,11 +71,19 @@ export function Header({ userRole, userName = 'Utilisateur', notifications = 0 }
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-2">
-                <User className="h-5 w-5" />
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-blue-600 text-white text-sm font-semibold">
+                    {userName.split(' ').map(n => n[0]?.toUpperCase() || '').slice(0, 2).join('')}
+                  </AvatarFallback>
+                </Avatar>
                 <span>{userName}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-56">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-medium">{userName}</p>
+                <p className="text-xs text-slate-500">{userRole === 'patient' ? 'Patient' : userRole === 'admin' ? 'Administrateur' : 'Médecin'}</p>
+              </div>
               <DropdownMenuItem>
                 <User className="mr-2 h-4 w-4" />
                 {t('sidebar.profile')}

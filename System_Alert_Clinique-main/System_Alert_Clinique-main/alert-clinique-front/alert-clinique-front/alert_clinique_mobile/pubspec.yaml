@@ -54,6 +54,9 @@ dependencies:
   
   # Shared Preferences (for storing user data)
   shared_preferences: ^2.2.2
+  
+  # Image Picker (for camera and gallery)
+  image_picker: ^1.0.7
 
 dev_dependencies:
   flutter_test:

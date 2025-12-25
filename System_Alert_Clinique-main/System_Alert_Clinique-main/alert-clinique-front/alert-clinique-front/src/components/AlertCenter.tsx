@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { toast } from 'sonner';
+import { getAlertes, AlerteDto } from '../lib/api';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Progress } from './ui/progress';
 import { Separator } from './ui/separator';
@@ -283,13 +284,94 @@ const getAlertIcon = (type: string) => {
 
 export function AlertCenter() {
   const { t } = useLanguage();
-  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('time');
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [showResolved, setShowResolved] = useState(true);
+
+  // Fonction pour calculer le temps écoulé
+  const getTimeAgo = (timestamp: string): string => {
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'À l\'instant';
+      if (diffMins < 60) return `Il y a ${diffMins} min`;
+      if (diffHours < 24) return `Il y a ${diffHours}h`;
+      if (diffDays < 7) return `Il y a ${diffDays}j`;
+      return date.toLocaleDateString('fr-FR');
+    } catch {
+      return 'N/A';
+    }
+  };
+
+  // Charger les alertes depuis l'API
+  useEffect(() => {
+    const loadAlerts = async () => {
+      try {
+        setIsLoading(true);
+        const alertesData = await getAlertes();
+        
+        // Debug: afficher les données reçues
+        console.log('Données alertes transformées:', alertesData);
+        
+        // Transformer les données de l'API en format Alert
+        const transformedAlerts: Alert[] = alertesData.map((alerte: AlerteDto) => {
+          // Utiliser patientName du DTO (garanti par le backend)
+          const patientName = alerte.patientName || 
+                            alerte.patient?.name || 
+                            (alerte.patientId ? `Patient ${alerte.patientId}` : 'Patient inconnu');
+          const patientId = alerte.patientId?.toString() || 
+                          alerte.patient?.id?.toString() || 
+                          '';
+
+          // Déterminer la sévérité depuis le type ou le message
+          let severity: 'critical' | 'high' | 'medium' | 'low' = 'medium';
+          const typeLower = alerte.type?.toLowerCase() || '';
+          const messageLower = alerte.message?.toLowerCase() || '';
+          
+          if (typeLower.includes('critique') || messageLower.includes('critique')) {
+            severity = 'critical';
+          } else if (typeLower.includes('élevé') || messageLower.includes('élevé') || typeLower.includes('high')) {
+            severity = 'high';
+          } else if (typeLower.includes('faible') || messageLower.includes('faible') || typeLower.includes('low')) {
+            severity = 'low';
+          }
+
+          return {
+            id: alerte.id,
+            patient: patientName,
+            patientId: patientId,
+            type: alerte.type || 'Alerte',
+            severity: severity,
+            status: 'pending' as const, // Par défaut, peut être ajusté selon vos besoins
+            time: getTimeAgo(alerte.timestamp),
+            timestamp: alerte.timestamp,
+            description: alerte.message || '',
+          };
+        });
+
+        setAlerts(transformedAlerts);
+      } catch (error) {
+        console.error('Erreur lors du chargement des alertes:', error);
+        toast.error('Impossible de charger les alertes');
+        // En cas d'erreur, utiliser les données mockées
+        setAlerts(mockAlerts);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAlerts();
+  }, []);
 
   const filteredAlerts = alerts
     .filter((alert) => {
@@ -556,7 +638,24 @@ export function AlertCenter() {
 
           {/* Alerts List */}
           <div className="space-y-3">
-            {filteredAlerts.map((alert) => (
+            {isLoading ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                    <p className="text-slate-600">Chargement des alertes...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : filteredAlerts.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-slate-600">Aucune alerte trouvée</p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredAlerts.map((alert) => {
+                return (
               <Card 
                 key={alert.id} 
                 className={`hover:shadow-lg transition-all cursor-pointer ${
@@ -697,9 +796,11 @@ export function AlertCenter() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+                );
+              })
+            )}
 
-            {filteredAlerts.length === 0 && (
+            {!isLoading && filteredAlerts.length === 0 && (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <CheckCircle className="h-12 w-12 text-green-600 mb-4" />

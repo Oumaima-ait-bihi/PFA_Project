@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,7 +19,9 @@ import {
   Pill,
   FileText,
   Edit,
-  Save
+  Save,
+  Camera,
+  X
 } from 'lucide-react';
 
 export function PatientProfile() {
@@ -37,10 +39,88 @@ export function PatientProfile() {
     weight: '72 kg',
     emergencyContact: 'Marie Dupont - +33 6 98 76 54 32',
   });
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const handleSave = () => {
     setIsEditing(false);
     toast.success('Profil mis à jour avec succès');
+  };
+
+  const openCamera = async () => {
+    try {
+      // Vérifier si getUserMedia est disponible
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast.error('Votre navigateur ne supporte pas l\'accès à la caméra. Utilisez Chrome, Firefox ou Edge.');
+        return;
+      }
+
+      // Demander l'accès à la caméra
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'user', // Caméra frontale
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        setIsCameraOpen(true);
+      }
+    } catch (error: any) {
+      console.error('Erreur caméra:', error);
+      
+      let errorMessage = 'Impossible d\'accéder à la caméra.';
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorMessage = 'Permission refusée. Veuillez autoriser l\'accès à la caméra dans les paramètres de votre navigateur.';
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        errorMessage = 'Aucune caméra trouvée. Vérifiez que votre caméra est connectée.';
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        errorMessage = 'La caméra est déjà utilisée par une autre application.';
+      } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+        errorMessage = 'Les paramètres de la caméra ne sont pas supportés.';
+      }
+      
+      toast.error(errorMessage);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+
+      if (context) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+
+        const imageData = canvas.toDataURL('image/png');
+        setProfileImage(imageData);
+        closeCamera();
+        toast.success('Photo capturée avec succès !');
+      }
+    }
+  };
+
+  const closeCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraOpen(false);
+  };
+
+  const removePhoto = () => {
+    setProfileImage(null);
+    toast.success('Photo supprimée');
   };
 
   const medicalHistory = [
@@ -85,11 +165,37 @@ export function PatientProfile() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col items-center gap-4 md:flex-row md:items-start">
-            <Avatar className="h-24 w-24">
-              <AvatarFallback className="bg-blue-600 text-white text-2xl">
-                {profileData.name.split(' ').map(n => n[0]).join('')}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-24 w-24">
+                {profileImage ? (
+                  <AvatarImage src={profileImage} alt="Photo de profil" />
+                ) : null}
+                <AvatarFallback className="bg-blue-600 text-white text-2xl">
+                  {profileData.name.split(' ').map(n => n[0]).join('')}
+                </AvatarFallback>
+              </Avatar>
+              <Button
+                size="sm"
+                className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
+                onClick={isCameraOpen ? closeCamera : openCamera}
+              >
+                {isCameraOpen ? (
+                  <X className="h-4 w-4" />
+                ) : (
+                  <Camera className="h-4 w-4" />
+                )}
+              </Button>
+              {profileImage && !isCameraOpen && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                  onClick={removePhoto}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
             <div className="flex-1 text-center md:text-left">
               <h3 className="text-white mb-2">{profileData.name}</h3>
               <div className="flex flex-wrap gap-2 justify-center md:justify-start">
@@ -101,6 +207,48 @@ export function PatientProfile() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Camera Modal */}
+      {isCameraOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
+          onClick={(e) => {
+            // Fermer si on clique en dehors du modal
+            if (e.target === e.currentTarget) {
+              closeCamera();
+            }
+          }}
+        >
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Capturez une photo de votre visage</h3>
+              <Button variant="ghost" size="sm" onClick={closeCamera}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="relative bg-black rounded-lg overflow-hidden" style={{ minHeight: '400px' }}>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-auto max-h-[500px]"
+                style={{ transform: 'scaleX(-1)' }} // Miroir pour la caméra frontale
+              />
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
+            <div className="flex gap-4 mt-4 justify-end">
+              <Button variant="outline" onClick={closeCamera}>
+                Annuler
+              </Button>
+              <Button onClick={capturePhoto} className="gap-2">
+                <Camera className="h-4 w-4" />
+                Capturer
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Personal Information */}
